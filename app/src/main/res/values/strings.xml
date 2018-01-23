@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">LearnToRecognizeDigit</string>
+    <string name="action_settings">Settings</string>
+    <string name="welcome_page">欢迎</string>
+    <string name="display_page">数据展示</string>
+    <string name="config">参数设置</string>
+    <string name="training">开始训练</string>
+    <string name="recoginze">输入识别</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+</resources>
