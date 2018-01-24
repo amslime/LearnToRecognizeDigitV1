@@ -1,23 +1,27 @@
 package com.learn.wlnutter.learntorecognizedigit;
 
 import android.app.Fragment;
-import android.content.res.Resources;
+import android.media.Image;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 
-public class DataReader {
-    private static final DataReader instance = new DataReader();
+public class DataHandler {
+    private static final DataHandler instance = new DataHandler();
 
     private static final int SEG_LEN = 4096;
+
+    private List<ImageInfo> imageInfoList;
     private byte data_buffer[] = new byte[SEG_LEN];
     private byte label_buffer[] = new byte[SEG_LEN];
     private InputStream data, label;
     private int data_offset, label_offset, rows, cols, data_num, data_read_count, label_read_count;
     private boolean is_available;
-    private DataReader() {
+    private DataHandler() {
     }
-    public static DataReader getInstance() {
+    public static DataHandler getInstance() {
         return instance;
     }
 
@@ -51,7 +55,7 @@ public class DataReader {
         is_available = true;
     }
 
-    public ImageInfo getNextImageInfo() {
+    private ImageInfo getNextImageInfo() {
         try {
             byte[] b = nextDataBytes();
             int l = nextLabelValue();
@@ -89,13 +93,30 @@ public class DataReader {
         return res;
     }
 
+
+    public synchronized int updateImageInfoList() {
+        if (imageInfoList == null) {
+            imageInfoList = new ArrayList<>();
+        }
+        int limit = data_num - imageInfoList.size();
+        if (limit > 30) limit = 30;
+        for (int i = 0; i < limit; ++i) {
+            imageInfoList.add(getNextImageInfo());
+        }
+        return  limit;
+    }
+
+    public List<ImageInfo> getImageInfoList() {
+        return imageInfoList;
+    }
+
+
     public static int byteArrayToInt(byte[] b, int offset) {
         return b[3 + offset] & 0xFF |
                 (b[2 + offset] & 0xFF) << 8 |
                 (b[1 + offset] & 0xFF) << 16 |
                 (b[0 + offset] & 0xFF) << 24;
     }
-
 
 
 }

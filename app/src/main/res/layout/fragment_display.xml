@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     tools:context="com.learn.wlnutter.learntorecognizedigit.WelcomeFragment">
 
-    <ListView
+    <com.learn.wlnutter.learntorecognizedigit.RefreshableListView
         android:id="@+id/display_list"
         android:layout_width="match_parent"
         android:layout_height="match_parent"

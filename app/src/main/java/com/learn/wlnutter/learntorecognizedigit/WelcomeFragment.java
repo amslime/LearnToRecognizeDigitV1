@@ -31,6 +31,8 @@ public class WelcomeFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        //缓存,不随activity的销毁而销毁
+        setRetainInstance(true);
     }
 
     @Override

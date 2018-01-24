@@ -2,16 +2,17 @@ package com.learn.wlnutter.learntorecognizedigit;
 
 import android.app.Fragment;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
-import android.widget.ListView;
 import android.widget.TextView;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.lang.ref.WeakReference;
 import java.util.List;
 
 
@@ -24,10 +25,41 @@ import java.util.List;
  */
 public class DisplayFragment extends Fragment {
 
-    private DataReader dataReader;
+    private DataHandler dataHandler;
     private List<ImageInfo> imageInfoList;
-    private ListView imageViews;
+    private RefreshableListView imageViews;
     private BaseAdapter imageViewAdapter;
+
+    // Handler更新UI界面
+
+    private static class RefreshHandler extends Handler {
+        private final WeakReference<DisplayFragment> fragment;
+
+        public RefreshHandler(DisplayFragment fg) {
+            fragment = new WeakReference<DisplayFragment>(fg);
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            DisplayFragment fg = fragment.get();
+            if (fg != null) {
+                System.out.println("Get message = " + msg.what);
+                if (msg.what > 0) {
+                    // ListView的数据适配器更新数据集
+                    // 列表刷新和notify要放在同一个ui处理线程中，不然可能导致异步错误
+                    int res = fg.getDataHandler().updateImageInfoList();
+                    if (res == 0) {
+                        fg.getImageViews().doNotLoadMore();
+                    }
+                    System.out.println("list size = " + fg.getImageInfoList().size());
+                    fg.getImageViewAdapter().notifyDataSetChanged();
+                    // 必须调用这个方法，重置头部布局或底部布局的视图
+                    fg.getImageViews().onRefreshComplete();
+                }
+            }
+        }
+    }
+    private final Handler refreshHandler = new RefreshHandler(this);
 
     public DisplayFragment() {
 
@@ -41,10 +73,14 @@ public class DisplayFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (dataReader == null) {
+
+        //缓存,不随activity的销毁而销毁
+        setRetainInstance(true);
+
+        if (dataHandler == null) {
             try {
-                dataReader = DataReader.getInstance();
-                dataReader.init(this, R.raw.data_ubyte, R.raw.label_ubyte);
+                dataHandler = DataHandler.getInstance();
+                dataHandler.init(this, R.raw.data_ubyte, R.raw.label_ubyte);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -56,15 +92,27 @@ public class DisplayFragment extends Fragment {
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_display, container, false);
-        if (imageViews == null) {
-            imageInfoList = new ArrayList<>();
-            for (int i = 0; i < 500; ++i) {
-                imageInfoList.add(dataReader.getNextImageInfo());
-            }
-            imageViews =  view.findViewById(R.id.display_list);
-            imageViewAdapter = new ImageViewAdapter(inflater);
-            imageViews.setAdapter(imageViewAdapter);
+        System.out.println("Creating display view");
+        if (imageInfoList == null) {
+            dataHandler.updateImageInfoList();
+            imageInfoList = dataHandler.getImageInfoList();
         }
+        imageViews =  (RefreshableListView)view.findViewById(R.id.display_list);
+        imageViewAdapter = new ImageViewAdapter(inflater);
+        imageViews.setAdapter(imageViewAdapter);
+        imageViews.setOnRefreshListener(
+                new RefreshableListView.OnRefreshListener() {
+            @Override
+            public void onLoading() {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        System.out.println("prepare to update data");
+                        refreshHandler.sendEmptyMessage(1);
+                    }
+                }).start();
+            }
+        });
         return view;
     }
 
@@ -101,5 +149,21 @@ public class DisplayFragment extends Fragment {
             val.setText("" + imf.getLabelNum());
             return layout;
         }
+    }
+
+    public List<ImageInfo> getImageInfoList() {
+        return imageInfoList;
+    }
+
+    public RefreshableListView getImageViews() {
+        return imageViews;
+    }
+
+    public BaseAdapter getImageViewAdapter() {
+        return imageViewAdapter;
+    }
+
+    public DataHandler getDataHandler() {
+        return dataHandler;
     }
 }
